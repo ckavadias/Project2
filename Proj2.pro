@@ -9,22 +9,40 @@
 :-ensure_loaded(library(clpfd)).
 use_module(library(lists)).
 
-puzzle_solution(Puzzle):- diagonal(Puzzle),rows(Puzzle),
-                          transpose(Puzzle, T_Puzzle),rows(T_Puzzle).
+puzzle_solution(Puzzle):- make_puzzle(Puzzle, Puzzle).
 
-rows([_| Rs]):- valid_rows(Rs).
+make_puzzle([H|Puzzle], Result):- make_rows(Puzzle, [H], Result).
 
-valid_rows([]).
-valid_rows([[H|R] | Rs]):- valid_el(R),(sum_list(R, H); product_list(H, R)),
-                           valid_rows(Rs).
+%construct and combine rows into a puzzle
+make_rows([], Result, Result).
+make_rows([[H |R] | Rs], New, Result):- fill_row(R, R),
+                                        (sum_list(R, H);product_list(R, H)),
+                                        append(New, [[H |R]], Newer),
+                                        make_rows(Rs, Newer, Result).
 
-product_list(H, R):- make_product(R, 1, H).
-make_product([], H, H).
-make_product([E | Es], A, H):- (Product is E*A), make_product(Es, Product, H).
+%find the product of a list of numbers                                      
+product_list([E|Es], Result):- product_list(Es, E, Result).
+product_list([], Result, Result).
+product_list([E|Es], A, Result):- NewA is E*A, product_list(Es, NewA, Result).
 
-valid_el([]).                           
-valid_el([E | Es]):- (1 =< E),(E =< 9),(\+member(E, Es)).valid(Es).
+fill_row(Es, Result):- find_els(Es, [], Result).
 
-diagonal([_, _]).
-diagonal([ _, [_, X | _], [_, _, X| _]]).
-diagonal([ _, [_, X | _], [_, _, X| _], [_, _, _, X| _]]).
+%construct a row of valid elements
+find_els([], Result, Result).
+find_els([E|Es], New, Result):- choose_el(E, New, E), 
+                                append(New, [E], Newer),
+                                find_els(Es, Newer, Result).
+
+choose_el(E, Row, Result):- one_to_nine(E, 1, Row, Result).
+
+%cycle through candidate elements until one that isn't in the row is found
+one_to_nine(E, _, _, E):- ground(E).
+one_to_nine(_, Candidate, Row, Candidate):- (\+member(Candidate, Row)).
+one_to_nine(E, Candidate, Row, Result):- Candidate < 9 ->
+                                         NewCan is Candidate + 1,
+                                         one_to_nine(E, NewCan, Row, Result).
+                                
+%None of these are actually grounding the variables, need to redesign to allow
+%grounding of all tems 
+
+%Maybe construct the rows first
