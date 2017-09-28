@@ -9,20 +9,42 @@
 :-ensure_loaded(library(clpfd)).
 use_module(library(lists)).
 
-puzzle_solution(Puzzle):- link_diagonal(Puzzle, Puzzle),
+puzzle_solution(Puzzle):- link_diagonal(Puzzle),
                           make_puzzle(Puzzle, Puzzle).
-                          
-link_diagonal([_, _], [[_, H], [H, H]]).
-link_diagonal([_,_,_], [_, [_, X, _], [_, _, X]]).
-link_diagonal([_,_,_, _], [_, [_, X | _], [_, _, X | _], [_, _, _, X]]).
+
+%bind diagonal's to eachother, also check that the diagonals aren't repeated
+%within their own rows as this automatically implies failure
+link_diagonal([[_, H], [H, H]]).
+link_diagonal([_, A, B]):- (A = [_, X, _]), (B = [_, _, X]),
+                                    is_set(A), is_set(B).
+link_diagonal([_, A, B, C]):- (A = [_, X | _]), (B = [_, _, X, _]),
+                                          (C = [_, _, _, X]),
+                                          is_set(A), is_set(B), is_set(C).
 
 make_puzzle([_|Puzzle], Result):- make_rows(Puzzle, Result).
 
+%check that the row can achieve a sum/product goal
+check_rows([]).
+check_rows([R | Rs]):- maybe_valid(R), check_rows(Rs).
+
+check_sp([], Remaining,_, _) :- length(Remaining, Length), Length > 7.
+check_sp([], [L | Rem], Sum, Prod) :- last(Rem, M),((Sum >= L) , (Sum =< M);
+                                      (Prod >= L),(Prod =< M)).
+
+check_sp([E|Es], Remaining, Sum, Prod):- ground(E) -> 
+                                   NewSum is Sum - E,
+                                   NewProd is Prod/E,
+                                   select(E, Remaining, NewRem),
+                                   check_sp(Es, NewRem, NewSum, NewProd);
+                                   check_sp(Es, Remaining, Sum, Prod).
+                                  
+maybe_valid([H |Es]):- check_sp(Es,[1,2,3,4,5,6,7,8,9], H, H).
+
 %construct and combine rows into a puzzle
 make_rows([], Result, Result).
-make_rows([[H |R] | Rs], Result):- fill_row(R, R),
-                                        (sum_list(R, H);product_list(R, H)),
-                                        make_rows(Rs, Result).
+make_rows([[H |R] | Rs], Result):- fill_row(R, R, Result),
+                                   (sum_list(R, H);product_list(R, H)),
+                                   make_rows(Rs, Result).
 
 %find the product of a list of numbers                                      
 product_list([E|Es], Result):- product_list(Es, E, Result).
@@ -30,12 +52,13 @@ product_list([], Result, Result).
 product_list([E|Es], A, Result):- NewA is E*A, product_list(Es, NewA, Result).
 
 
-fill_row(Es, Result):- is_set(Es),find_els(Es, Es, Result).
+fill_row(Es, Result, Puzzle):- is_set(Es),find_els(Es, Es, Result, Puzzle).
 
 %construct a row of valid elements
-find_els([], Result, Result).
-find_els([E|Es], Row, Result):- choose_cand(Row, Cand),choose_el(E,Cand, E), 
-                                find_els(Es, Row, Result).
+find_els([], Result, Result, _).
+find_els([E|Es], Row, Result, [H|Puzzle]):- choose_cand(Row, Cand),
+                                choose_el(E,Cand, E), link_diagonal([H|Puzzle]),
+                                check_rows(Puzzle), find_els(Es, Row, Result).
 
 choose_el(E, [C | Cs], Result):- ground(E) ->  Result is E;
                                  one_to_nine(C,Cs, Result).
