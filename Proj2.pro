@@ -17,7 +17,13 @@ link_diagonal([[_, H], [H, H]]).
 link_diagonal([_, [_, X, _], [_, _, X]]).
 link_diagonal([_, [_, X | _], [_, _, X, _], [_, _, _, X]]).
 
-make_puzzle([H|Puzzle]):- make_rows(Puzzle, [H|Puzzle]).
+make_puzzle([H|Puzzle]):- make_rows(Puzzle, [H|Puzzle]), 
+                          transpose([H|Puzzle],[_|TPuz]), check_sp(TPuz).
+
+                          
+%check that is true sum and product
+check_sp([]).
+check_sp([[H | R] | Rs]):- (sum_list(R, H);product_list(R, H)), check_sp(Rs).
 
 %determine row with minimum solutions
 valid_els([], _, _).
@@ -39,7 +45,6 @@ min_sols([R | Rs], Min, MinSols,Puzzle):- bagof(R,is_valid_row(R,Puzzle),Sols),
 make_rows([], _).
 make_rows(Rows, Result):- min_sols(Rows, R, Sols,Result), select(R, Rows, Rs),
                           member(R, Sols),
-                          transpose(Result,TPuz), check_rows(TPuz),
                           make_rows(Rs, Result).
                                    
 %check that the row is valid
@@ -48,13 +53,19 @@ is_valid_row([H | R], Puzzle):- valid_els(R,Puzzle, [1,2,3,4,5,6,7,8,9]),
 
 %check that the row can achieve a sum/product goal
 check_rows([]).
-check_rows([_|Rows]):- row_sets(Rows),valid_rows(Rows).
+check_rows([_|Rows]):- row_sets(Rows).%valid_rows(Rows).
 
 row_sets([]).
 row_sets([R | Rs]) :- is_set(R),row_sets(Rs).
 
+%find the product of a list of numbers                                      
+product_list([E|Es], Result):- product_list(Es, E, Result).
+product_list([], Result, Result).
+product_list([E|Es], A, Result):- NewA is E*A, product_list(Es, NewA, Result).
+/*
 valid_rows([]).
 valid_rows([R | Rs]) :- maybe_valid(R),valid_rows(Rs).
+
 maybe_valid([H |Es]):- length(Es,L),check_sp(Es,L, [1,2,3,4,5,6,7,8,9], H, H).
 
 check_sp([], Len, Rem,S, P) :- length(Rem, L), (L =:= 9 - Len), (S = 0 ; P = 1).
@@ -69,12 +80,7 @@ check_sp([E|Es],Len, Remaining, Sum, Prod):- ground(E) ->
                                    check_sp(Es, Len,NewRem, NewSum, NewProd);
                                    check_sp(Es, Len,Remaining, Sum, Prod).
 
-%find the product of a list of numbers                                      
-product_list([E|Es], Result):- product_list(Es, E, Result).
-product_list([], Result, Result).
-product_list([E|Es], A, Result):- NewA is E*A, product_list(Es, NewA, Result).
 
-/*
 %start to allocate elements to empty rows
 fill_row(Es, Puzzle):- is_set(Es),find_els(Es, Es, Puzzle).
 
