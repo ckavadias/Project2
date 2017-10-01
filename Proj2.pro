@@ -16,6 +16,7 @@ puzzle_solution(Puzzle):- link_diagonal(Puzzle),
 link_diagonal([[_, H], [H, H]]).
 link_diagonal([_, [_, X, _], [_, _, X]]).
 link_diagonal([_, [_, X | _], [_, _, X, _], [_, _, _, X]]).
+link_diagonal([_, [_, X | _], [_, _, X| _], [_, _, _, X, _], [_, _, _, _,X]]).
 
 make_puzzle([H|Puzzle]):- make_rows(Puzzle, [H|Puzzle]), 
                           transpose([H|Puzzle],[_|TPuz]), check_sp(TPuz).
