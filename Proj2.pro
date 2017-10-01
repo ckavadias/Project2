@@ -5,38 +5,41 @@
 %a "Puzzle". A Puzzle is valid given the the elements in each row/column are 
 %unique from the other elements in that row/columm, the top left to bottom
 %right diagonal contains the same digit in all cells, the rows/columns are the
-%sum or product of the header(initial) element and all elements are >1 or <9.
+%sum or product of the header(initial) element and all elements are >=1 or <=9.
 :-ensure_loaded(library(clpfd)).
 use_module(library(lists)).
 
 puzzle_solution(Puzzle):- link_diagonal(Puzzle),
                           make_puzzle(Puzzle).
 
-%bind diagonal's to eachother, also check that the diagonals aren't repeated
-%within their own rows as this automatically implies failure
+%bind diagonal's to eachother
 link_diagonal([[_, H], [H, H]]).
-link_diagonal([_, A, B]):- (A = [_, X, _]), (B = [_, _, X]).
-link_diagonal([_, A, B, C]):- (A = [_, X | _]), (B = [_, _, X, _]),
-                                          (C = [_, _, _, X]).
+link_diagonal([_, [_, X, _], [_, _, X]]).
+link_diagonal([_, [_, X | _], [_, _, X, _], [_, _, _, X]]).
 
 make_puzzle([H|Puzzle]):- make_rows(Puzzle, [H|Puzzle]).
 
 %check that the row can achieve a sum/product goal
-check_rows([]).
-check_rows([R | Rs]):- is_set(R),maybe_valid(R), check_rows(Rs).
+check_rows(Rows):- row_sets(Rows),valid_rows(Rows).
 
-check_sp([], Remaining,S, P) :- length(Remaining, L), (L = 6), (S = 0 ; P = 1).
-check_sp([], Remaining,_, _) :- length(Remaining, L), L > 7.
-check_sp([], Rem, Sum, Prod) :- member(Sum, Rem) ; member(Prod, Rem).
+row_sets([]).
+row_sets([R | Rs]) :- is_set(R),row_sets(Rs).
 
-check_sp([E|Es], Remaining, Sum, Prod):- ground(E) -> 
+valid_rows([]).
+valid_rows([R | Rs]) :- maybe_valid(R),valid_rows(Rs).
+maybe_valid([H |Es]):- length(Es,L),check_sp(Es,L, [1,2,3,4,5,6,7,8,9], H, H).
+
+check_sp([], Len, Rem,S, P) :- length(Rem, L), (L =:= 9 - Len), (S = 0 ; P = 1).
+check_sp([],Len, Rem,_, _) :- length(Rem, L), L > (9 - Len + 1).
+check_sp([],_, Rem, Sum, Prod) :- length(Rem, L), L < 9,
+                                  member(Sum, Rem) ; member(Prod, Rem).
+
+check_sp([E|Es],Len, Remaining, Sum, Prod):- ground(E) -> 
                                    NewSum is Sum - E,
                                    NewProd is Prod/E,
                                    select(E, Remaining, NewRem),
-                                   check_sp(Es, NewRem, NewSum, NewProd);
-                                   check_sp(Es, Remaining, Sum, Prod).
-                                  
-maybe_valid([H |Es]):- check_sp(Es,[1,2,3,4,5,6,7,8,9], H, H).
+                                   check_sp(Es, Len,NewRem, NewSum, NewProd);
+                                   check_sp(Es, Len,Remaining, Sum, Prod).
 
 %construct and combine rows into a puzzle
 make_rows([], _).
@@ -70,11 +73,7 @@ fix_cand(Candidates, [], Candidates).
 fix_cand(Temp, [E | Es], Candidates) :- ground(E) -> select(E, Temp, NewTemp),
                                         fix_cand(NewTemp, Es, Candidates);
                                         fix_cand(Temp, Es, Candidates).
-add_cand([], Result, _, Result).
-add_cand([C | Cs], Current, Row, Result) :- (\+member(C, Row)) ->
-                                            append(Current, [C], NewCur),
-                                            add_cand(Cs, NewCur, Row, Result);
-                                            add_cand(Cs, Current, Row, Result).
+
 %cycle through candidate elements
 one_to_nine(Candidate, _,Candidate).
 one_to_nine(_, [C|Cands], Result):- one_to_nine(C, Cands, Result).
