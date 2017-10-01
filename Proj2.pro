@@ -19,8 +19,36 @@ link_diagonal([_, [_, X | _], [_, _, X, _], [_, _, _, X]]).
 
 make_puzzle([H|Puzzle]):- make_rows(Puzzle, [H|Puzzle]).
 
+%determine row with minimum solutions
+valid_els([], _, _).
+valid_els([E | Es], Puzzle, Valids):- member(E, Valids), check_rows(Puzzle),
+                              select(E, Valids, NewVals),
+                              valid_els(Es, Puzzle, NewVals).
+                              
+min_sols([], _, Min, Min, MinSols, MinSols, _).
+min_sols([R | Rs], Len, CMin, Min, CSols, MinSols, Puzzle):- 
+                                  (bagof(R,is_valid_row(R, Puzzle),Sols),
+                                  length(Sols, L),L < Len )-> 
+                                  min_sols(Rs, L, R, Min,Sols, MinSols, Puzzle);
+                                  min_sols(Rs, Len, CMin, Min, CSols, MinSols, Puzzle).
+min_sols([R | Rs], Min, MinSols,Puzzle):- bagof(R,is_valid_row(R,Puzzle),Sols), 
+                                       length(Sols, L),
+                                       min_sols(Rs, L, R, Min, Sols, MinSols, Puzzle).
+
+%construct and combine rows into a puzzle
+make_rows([], _).
+make_rows(Rows, Result):- min_sols(Rows, R, Sols,Result), select(R, Rows, Rs),
+                          member(R, Sols),
+                          transpose(Result,TPuz), check_rows(TPuz),
+                          make_rows(Rs, Result).
+                                   
+%check that the row is valid
+is_valid_row([H | R], Puzzle):- valid_els(R,Puzzle, [1,2,3,4,5,6,7,8,9]),
+                      (sum_list(R, H);product_list(R, H)).
+
 %check that the row can achieve a sum/product goal
-check_rows(Rows):- row_sets(Rows),valid_rows(Rows).
+check_rows([]).
+check_rows([_|Rows]):- row_sets(Rows),valid_rows(Rows).
 
 row_sets([]).
 row_sets([R | Rs]) :- is_set(R),row_sets(Rs).
@@ -31,7 +59,7 @@ maybe_valid([H |Es]):- length(Es,L),check_sp(Es,L, [1,2,3,4,5,6,7,8,9], H, H).
 
 check_sp([], Len, Rem,S, P) :- length(Rem, L), (L =:= 9 - Len), (S = 0 ; P = 1).
 check_sp([],Len, Rem,_, _) :- length(Rem, L), L > (9 - Len + 1).
-check_sp([],_, Rem, Sum, Prod) :- length(Rem, L), L < 9,
+check_sp([],_, Rem, Sum, Prod) :- length(Rem, L), L  < 9,
                                   member(Sum, Rem) ; member(Prod, Rem).
 
 check_sp([E|Es],Len, Remaining, Sum, Prod):- ground(E) -> 
@@ -41,17 +69,12 @@ check_sp([E|Es],Len, Remaining, Sum, Prod):- ground(E) ->
                                    check_sp(Es, Len,NewRem, NewSum, NewProd);
                                    check_sp(Es, Len,Remaining, Sum, Prod).
 
-%construct and combine rows into a puzzle
-make_rows([], _).
-make_rows([[H |R] | Rs], Result):- fill_row(R, Result),
-                                   (sum_list(R, H);product_list(R, H)),
-                                   make_rows(Rs, Result).
-
 %find the product of a list of numbers                                      
 product_list([E|Es], Result):- product_list(Es, E, Result).
 product_list([], Result, Result).
 product_list([E|Es], A, Result):- NewA is E*A, product_list(Es, NewA, Result).
 
+/*
 %start to allocate elements to empty rows
 fill_row(Es, Puzzle):- is_set(Es),find_els(Es, Es, Puzzle).
 
@@ -76,5 +99,5 @@ fix_cand(Temp, [E | Es], Candidates) :- ground(E) -> select(E, Temp, NewTemp),
 
 %cycle through candidate elements
 one_to_nine(Candidate, _,Candidate).
-one_to_nine(_, [C|Cands], Result):- one_to_nine(C, Cands, Result).
+one_to_nine(_, [C|Cands], Result):- one_to_nine(C, Cands, Result).*/
                                 
